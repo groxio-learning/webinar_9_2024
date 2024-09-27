@@ -1,0 +1,30 @@
+# Elixir Notes
+
+## CRC Counter
+
+```elixir
+defmodule Counter do
+  def new(string) do
+    String.to_integer(string)
+  end
+
+  def add(counter, value \\ 1) do
+    counter + value
+  end
+
+  def show(counter) do
+    "The ans-ARRRR is #{counter}"
+  end
+end
+```
+
+```elixir
+input = "42"
+
+input 
+|> Counter.new() 
+|> Counter.add(1) 
+|> Counter.add(1) 
+|> Counter.add(-1) 
+|> Counter.show()
+```
