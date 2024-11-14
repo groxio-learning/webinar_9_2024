@@ -139,10 +139,186 @@ grid = Grid.new(3, 3, [{0, 1}, {1, 1}, {2, 1}])
 grid
 |> Grid.evolve
 |> Grid.evolve
+|> Grid.evolve
+|> Grid.evolve
 |> Grid.show
 |> Kino.Image.new(:svg)
 ```
 
 ```elixir
-Grid.neighbor_count(grid, grid.cells[{1, 1}])
+# Grid.neighbor_count(grid, grid.cells[{1, 1}])
+```
+
+## Processes and State
+
+```elixir
+me = self()
+
+send(me, :hi)
+
+self()
+|> i
+
+```
+
+```elixir
+receive do
+  m -> m
+end
+```
+
+```elixir
+defmodule Life do
+
+
+  def start(height, width, cells) do
+    grid = Grid.new(height, width, cells)
+    spawn(fn -> loop(grid) end)
+  end
+
+  def loop(grid) do
+    grid
+    |> listen()
+    |> loop()
+  end
+  
+  def listen(grid) do
+    receive do
+      :evolve -> 
+        Grid.evolve(grid)
+      {:show, from_pid} -> 
+        
+        send(from_pid, Grid.show(grid))
+        grid
+    end
+  end
+
+  def evolve(pid) do
+    send(pid, :evolve)
+  end
+
+  def show(pid) do
+    send(pid, {:show, self()})
+    receive do
+      m -> m
+    end
+    |> Kino.Image.new(:svg)
+  end
+end
+```
+
+```elixir
+life = Life.start(3, 3, [{0, 1}, {1, 1}, {2, 1}])
+```
+
+```elixir
+send(life, {:show, self()})
+```
+
+```elixir
+receive do 
+  m -> m
+end
+|> Kino.Image.new(:svg)
+```
+
+```elixir
+Life.evolve(life)
+Life.show(life)
+
+```
+
+## GenServers
+
+```elixir
+defmodule LifeServer do
+  use GenServer
+
+  # API
+  def start_link({name, _h, _w, _cells}=args) do
+    GenServer.start_link(__MODULE__, args, name: name)
+  end
+
+  def evolve(pid \\ :life) do
+    GenServer.call(pid, :evolve)
+    |> Kino.Image.new(:svg)
+  end
+
+  def boom(pid \\ :life) do
+    GenServer.cast(pid, :boom)
+  end
+
+  # callbacks
+  def init({_name, h, w, cells}) do
+    grid = Grid.new(h, w, cells)
+    {:ok, grid}
+  end
+
+  def handle_cast(:boom, _state) do
+    raise "boom"
+  end
+
+  def handle_call(:evolve, _from, grid) do
+    new_grid = Grid.evolve(grid)
+    {:reply, Grid.show(new_grid), new_grid}
+  end
+
+  # functions
+  def child_spec({name, _, _, _}=attrs) do
+    %{id: name, start: {LifeServer, :start_link, [attrs]}}
+  end
+end
+```
+
+```elixir
+LifeServer.boom(:life)
+```
+
+```elixir
+init_values = {:life, 3, 3, [{0, 1}, {1, 1}, {2, 1}]}
+init_values2 = {:la_vida_loca, 3, 3, [{1, 0}, {1, 1}, {1, 2}]}
+childspecs = [{LifeServer, init_values}, {LifeServer, init_values2}]
+
+Enum.each(childspecs, &Kino.start_child!/1)
+```
+
+```elixir
+ [GenServer.whereis(:life), GenServer.whereis(:la_vida_loca)]
+```
+
+```elixir
+GenServer.call(:life, :evolve) |> Kino.Image.new(:svg)
+```
+
+```elixir
+LifeServer.evolve(:la_vida_loca)
+```
+
+```elixir
+LifeServer.child_spec({:life, 3, 3, [{0, 1}, {1, 1}, {2, 1}]})
+```
+
+```elixir
+# bad things man
+LifeServer.boom()
+```
+
+## The Fly in the Ointment
+
+```elixir
+i LifeServer
+```
+
+```elixir
+i :sys
+```
+
+```elixir
+:sys.get_state :life
+```
+
+## Lifecycle
+
+```elixir
+
 ```
